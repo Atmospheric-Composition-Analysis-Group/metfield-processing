@@ -7,7 +7,11 @@
 #BSUB -o logs/download-GEOS_FP-%J.txt
 
 set -u
-: "$YEAR" "$MONTH" "$DAYS"
+: "$YEAR" "$MONTH" 
+
+DAYS=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
+
+echo "$DAYS"
 
 WGET_OPTIONS="-r -c -nH --cut-dirs=9 -np -nv"
 
