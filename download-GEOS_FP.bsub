@@ -7,34 +7,33 @@
 #BSUB -o logs/download-GEOS_FP-%J.txt
 
 set -u
-: "$year" "$month" "$days"
+: "$YEAR" "$MONTH" "$DAYS"
 
-
-rawdir=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/GEOS_FP-raw/$year$month/
+rawdir=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/GEOS_FP-raw/$YEAR$MONTH/
 if [ ! -d "$rawdir" ]; then # check if directory exist!
     mkdir -p $rawdir
 fi
 
 echo "---------Started -------"
 
-for day in $(seq -w '01' $days) ; 
+for DAY in $(seq -w '01' $DAYS) ; 
 
 do
-  date=$year$month$day
+  date=$YEAR$MONTH$DAY
 
    echo "Downloading $date"
    
    cd $rawdir
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_rad_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_lnd_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_flx_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_slv_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*inst3_3d_asm_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_asm_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_cld_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_mst_Ne*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_rad_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/
-   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_mst_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$year/M$month/D$day/ 
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_rad_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_lnd_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_flx_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg1_2d_slv_Nx*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*inst3_3d_asm_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_asm_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_cld_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_mst_Ne*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_rad_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+   wget -r  --no-parent  --cut-dirs=9 -A "*tavg3_3d_mst_Nv*nc4" https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/ 
      
 done
 mv portal.nccs.nasa.gov/* .
