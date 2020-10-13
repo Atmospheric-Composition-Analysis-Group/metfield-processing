@@ -1,0 +1,11 @@
+#!/bin/bash
+
+
+THIS_SCRIPTS_DIRECTORY=$(realpath $(dirname "$0"))
+
+YEAR=${YEAR:=$(date --date='-1 month' +%Y)}
+MONTH=${MONTH:=$(date --date='-1 month' +%m)}
+export YEAR=$YEAR
+export MONTH=$MONTH
+
+envsubst '${YEAR} ${MONTH}' < $THIS_SCRIPTS_DIRECTORY/regrid-GEOS_FP.bsub | bsub
