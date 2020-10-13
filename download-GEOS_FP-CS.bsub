@@ -1,0 +1,25 @@
+#!/bin/bash
+#BSUB -n 4
+#BSUB -R "rusage[mem=4000] span[hosts=1]"
+#BSUB -q rvmartin
+#BSUB -W 168:00
+#BSUB -a 'docker(liambindle/my-python-environment:2020-05)'
+#BSUB -o logs/download-GEOS_FP-%J.txt
+set -e
+set -x
+set -u
+: "$YEAR" "$MONTH" 
+
+DAYS=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
+
+echo "$DAYS"
+
+WGET_OPTIONS="-r -c -nH --cut-dirs=7 -np -nv -R .html,.txt"
+
+rawdir=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/GEOS_FP-CS-raw/$YEAR/$MONTH/
+mkdir -p $rawdir
+
+cd $rawdir
+for DAY in $(seq -w '01' $DAYS) ; do   
+   wget $WGET_OPTIONS --accept-regex '.*tavg_3hr_ctm_c0720_v72.*nc4' https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y$YEAR/M$MONTH/D$DAY/
+done
