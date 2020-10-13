@@ -1,3 +1,6 @@
 [submodule "GEOS_FP"]
 	path = GEOS_FP
 	url = https://github.com/Atmospheric-Composition-Analysis-Group/GEOS_FP.git
+[submodule "downloads"]
+	path = downloads
+	url = ./downloads
