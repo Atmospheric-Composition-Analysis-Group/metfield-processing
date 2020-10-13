@@ -93,103 +93,103 @@ GEOS.fp.asm.inst3_3d_asm_Nv.YYYYMMDD_hhmm.V01.nc4
 PS,PV,QV,T
 
 ==> Local Raw Data Path
-/stetson-home/jmeng/scratch_geoschem/GEOS-FP_raw/202008/
+${GEOS_FP_DOWNLOAD_DIR}/${YEAR}${MONTH}/
 
 ==> Nested CH output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.CH.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   801  421  1025 581   # China grid
 
 ==> Nested EU output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.EU.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   529 492 705 606      # NOTE: Need correct indices
 
 ==> Nested NA output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.NA.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   161 400 385 601
 
 ==> Nested SE output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.SE.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   817 321 993 481
 
 ==> Nested AS output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.AS.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 769 317 1057 581 
   
 ==> Nested 0625 CH output
 T
 GEOSFP.YYYYMMDD.%%%%%%.05x0625.CH.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   401  211  513 291   # China grid
 
 ==> Nested 0625 EU output
 T
 GEOSFP.YYYYMMDD.%%%%%%.05x0625.EU.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
   265 246 353 303     
 
 ==> Nested 0625 NA output
 T
 GEOSFP.YYYYMMDD.%%%%%%.05x0625.NA.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
   81 201 193 301
 
 ==> Nested 0625 SE output
 T
 GEOSFP.YYYYMMDD.%%%%%%.05x0625.SE.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
   409 161 497 241
 
 ==> Nested 0625 AS output
 T
 GEOSFP.YYYYMMDD.%%%%%%.05x0625.AS.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 385 159 529 291  
 
 ==> 2 x 2.5 output
 T
 GEOSFP.YYYYMMDD.%%%%%%.2x25.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
 ==> 4 x 5 output 
 T
 GEOSFP.YYYYMMDD.%%%%%%.4x5.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
 ==> 0.25 x 0.3125 output
 T
 GEOSFP.YYYYMMDD.%%%%%%.025x03125.nc
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
-/data10/jmeng/GEOS_FP_Download/regrid_codes/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
 ==> Native-resolution wind speed output
 F
 GEOSFP.YYYYMMDD.SPEED.025x03125.nc
-/data9/chili/GCSupport/GEOS_FP_Asia/temp/
-/data9/chili/GCSupport/GEOS_FP_Asia/temp/
+${REGRID_CODES_TEMP_DIR}
+${REGRID_CODES_TEMP_DIR}
 
 ==> Mapping Weight Files
 weights_025x03125_to_05x0625.txt
