@@ -1,0 +1,642 @@
+#!/usr/bin/perl -w
+
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !MODULE: getMerra2
+#
+# !DESCRIPTION: Perl script getMerra2 downloads 1 day of MERRA2 raw met
+#  data (0.5 x 0.625 degree horizontal resolution).  We download the data
+#  directly from the GMAO FTP site with the Unix Wget command.
+#\\
+#\\
+# !USES:
+#
+require 5.003;                  # Need this version of Perl or newer
+use strict;                     # Force strict syntax rules
+use Dates qw( &addDate 
+              &getLocalTime 
+              &julDay  
+              &ymdExtract   );  # Date & time functions
+#
+# !PUBLIC DATA MEMBERS: 
+#
+# MERRA2 file collections
+our $DO_GET_CONST         = "UNDEFINED";   # Should we get const_2d_chm_Fx?
+our $CONST_2d_ASM_Nx_PREF = "UNDEFINED";   # Dir path for const_2d_asm_Fx file
+our $CONST_2d_ASM_Nx_FILE = "UNDEFINED";   # Filename for const_2d_asm_Fx file
+our $TAVG1_2d_FLX_Nx_PREF = "UNDEFINED";   # Dir path for tavg1_2d_flx_Nx file
+our $TAVG1_2d_FLX_Nx_FILE = "UNDEFINED";   # Filename for tavg1_2d_flx_Nx file
+our $TAVG1_2d_LND_Nx_PREF = "UNDEFINED";   # Dir path for tavg1_2d_lnd_Nx file
+our $TAVG1_2d_LND_Nx_FILE = "UNDEFINED";   # Filename for tavg1_2d_lnd_Nx file
+our $TAVG1_2d_RAD_Nx_PREF = "UNDEFINED";   # Dir path for tavg1_2d_rad_Nx file
+our $TAVG1_2d_RAD_Nx_FILE = "UNDEFINED";   # Filename for tavg1_2d_rad_Nx file
+our $TAVG1_2d_SLV_Nx_PREF = "UNDEFINED";   # Dir path for tavg1_2d_slv_Nx file
+our $TAVG1_2d_SLV_Nx_FILE = "UNDEFINED";   # Filename for tavg1_2d_slv_Nx file
+our $TAVG3_3d_ASM_Nv_PREF = "UNDEFINED";   # Dir path for tavg3_3d_asm_Nv file
+our $TAVG3_3d_ASM_Nv_FILE = "UNDEFINED";   # Filename for tavg3_3d_asm_Nv file
+our $TAVG3_3d_CLD_Nv_PREF = "UNDEFINED";   # Dir path for tavg3_3d_cld_Nv file
+our $TAVG3_3d_CLD_Nv_FILE = "UNDEFINED";   # Filename for tavg3_3d_cld_Nv file
+our $TAVG3_3d_MST_Ne_PREF = "UNDEFINED";   # Dir path for tavg3_3d_mst_Ne file
+our $TAVG3_3d_MST_Ne_FILE = "UNDEFINED";   # Filename for tavg3_3d_mst_Ne file
+our $TAVG3_3d_MST_Nv_PREF = "UNDEFINED";   # Dir path for tavg3_3d_mst_Nv file
+our $TAVG3_3d_MST_Nv_FILE = "UNDEFINED";   # Filename for tavg3_3d_mst_Nv file
+our $TAVG3_3d_RAD_Nv_PREF = "UNDEFINED";   # Dir path for tavg3_3d_rad_Nv file
+our $TAVG3_3d_RAD_Nv_FILE = "UNDEFINED";   # Filename for tavg3_3d_ras_Nv file
+our $INST3_3d_ASM_Nv_PREF = "UNDEFINED";   # Dir path for inst3_3d_asm_Nv file
+our $INST3_3d_ASM_Nv_FILE = "UNDEFINED";   # Filename for inst3_3d_asm_Nv file
+
+# Met field directory
+our $MET_DIR     = "";
+
+# MERRA2 file collection directories and filenames
+our @dirPaths    = ();
+our @files       = ();
+
+# Today's date
+our $DATE        = "";
+our $YEAR        = "";
+our $MONTH       = "";
+our $DAY         = "";
+			       
+# Number of seconds to sleep between tries
+our $SLEEP_SEC   = 0;
+
+# Print data commands without downloading data
+our $PRINTONLY   = 0;
+
+# Turn on verbose output
+our $VERBOSE     = 0;
+
+# List of files on the remote server
+our $LISTING     = "";
+#
+# !PUBLIC MEMBER FUNCTIONS:
+#  &main()       
+#
+# !PRIVATE MEMBER FUNCTIONS:
+#  &errorMsg($)
+#  &getDefaults($$)
+#  &checkData($$)
+#  &getData()
+#
+# !CALLING SEQUENCE:
+#  getMerra2 20110101     # Gets data for 2011/01/01
+#  getMerra2 20110101 1   # Dryrun: shows wget commands only
+#  getMerra2 20110101 2   # Gets data for 2011/01/01 and echoes extra output
+#
+# !REVISION HISTORY: 
+#  24 Oct 2011 - R. Yantosca - Initial version, based on GEOS_5/perl/getGeos5
+#  05 Aug 2013 - R. Yantosca - Modified for GEOS-FP: Renamed to getGeosFp
+#  05 Aug 2013 - R. Yantosca - Added &waitForData routine
+#  07 Aug 2013 - R. Yantosca - Now check if all files are downloaded
+#  18 Oct 2013 - R. Yantosca - Don't use the tavg3_3d_rad_Nv collection
+#  05 Dec 2013 - R. Yantosca - Restore the tavg3_3d_rad_Nv collection
+#  10 Dec 2015 - M. Sulprizio- Modified for MERRA2: Rename to getMerra2
+#  31 Mar 2016 - M. Sulprizio- Update to read files from unique ftp sites for
+#                              each collection
+#EOP
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: errorMsg
+#
+# !DESCRIPTION: Routine errorMsg prints an error message and exits.
+#\\
+#\\
+# !INTERFACE:
+#
+sub errorMsg($) {
+#
+# !INPUT PARAMETERS:
+# 
+  # $errCode: Error code to return to calling program
+  my ( $errCode ) = @_;
+#
+# !CALLING SEQUENCE:
+#  &errCode( 3 );
+#
+# !REVISION HISTORY:
+#  13 Aug 2010 - R. Yantosca - Initial version
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # Print error msg
+  print "getMerra: ERROR $errCode ENCOUNTERED!  Exiting...\n";
+
+  # Exit w/ error code
+  exit( $errCode );
+}
+#EOC
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getDefaults
+#
+# !DESCRIPTION: Routine getDefaults reads an input file and returns the
+#  name of the directory where MERRA2 "raw" met data files are found.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getDefaults($$) {
+#
+# !INPUT PARAMETERS:
+# 
+  # $fileName1 : Filename containing default settings to be read
+  # $fileName2 : Filename containing locations of raw data files
+  my ( $fileName1,$fileName2 ) = @_;
+#
+# !CALLING SEQUENCE:
+#  &getDefaults( FILENAME1, FILENAME2 );
+#
+# !REVISION HISTORY:
+#  24 Oct 2011 - R. Yantosca - Initial version, based on GEOS_5/perl/checkGeos5
+#  05 Aug 2013 - R. Yantosca - Modified for GEOS-FP met data
+#  06 Aug 2013 - R. Yantosca - Now read sleep time between tries [s]
+#  06 Aug 2013 - R. Yantosca - Now save name of file listing @ GMAO FTP
+#  10 Dec 2015 - M. Sulprizio- Modified for MERRA2 met data    
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  my @file   = "";
+  my $temp   = "";
+
+  #--------------------------------------
+  # Define global date variables
+  #--------------------------------------
+  $YEAR   = substr( $DATE, 0, 4 );   # YYYY
+  $MONTH  = substr( $DATE, 4, 2 );   # MM
+  $DAY    = substr( $DATE, 6, 2 );   # DD	
+
+  #--------------------------------------
+  # Read variable settings from the file
+  #--------------------------------------
+
+  # Read info from doMerra2.input file
+  open( I, "<$fileName1" ) or die "Cannot open $fileName1!\n";
+  chomp( @file = <I> );
+  close( I );
+
+  # Parse thru each line until we find the "raw" data directory
+  for ( my $i = 0; $i < scalar( @file ); $i++ ) {
+
+    if ( $file[$i] =~ "==> Raw Met Data Directory" ) {
+      $MET_DIR   = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Sleep Time [s]" ) {
+      $SLEEP_SEC = $file[++$i];
+ 
+    }
+  }
+
+  # Read info from Merra2_Driver.input file
+  open( I, "<$fileName2" ) or die "Cannot open $fileName2!\n";
+  chomp( @file = <I> );
+  close( I );
+
+  # Parse thru each line and initialize global variables
+  for ( my $i = 0; $i < scalar( @file ); $i++ ) {
+	  
+    if ( $file[$i] =~ "==> const_2d_asm_Nx" ) {
+      $CONST_2d_ASM_Nx_PREF = $file[++$i];
+      $CONST_2d_ASM_Nx_FILE = $file[++$i];
+      $temp                 = $file[++$i];
+      $DO_GET_CONST         = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg1_2d_flx_Nx" ) {
+      $TAVG1_2d_FLX_Nx_PREF = $file[++$i];
+      $TAVG1_2d_FLX_Nx_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg1_2d_lnd_Nx" ) {
+      $TAVG1_2d_LND_Nx_PREF = $file[++$i];
+      $TAVG1_2d_LND_Nx_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg1_2d_rad_Nx" ) {
+      $TAVG1_2d_RAD_Nx_PREF = $file[++$i];
+      $TAVG1_2d_RAD_Nx_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg1_2d_slv_Nx" ) {
+      $TAVG1_2d_SLV_Nx_PREF = $file[++$i];
+      $TAVG1_2d_SLV_Nx_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg3_3d_asm_Nv" ) {
+      $TAVG3_3d_ASM_Nv_PREF = $file[++$i];
+      $TAVG3_3d_ASM_Nv_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg3_3d_cld_Nv" ) {
+      $TAVG3_3d_CLD_Nv_PREF = $file[++$i];
+      $TAVG3_3d_CLD_Nv_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg3_3d_mst_Ne" ) {
+      $TAVG3_3d_MST_Ne_PREF = $file[++$i];
+      $TAVG3_3d_MST_Ne_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg3_3d_mst_Nv" ) {
+      $TAVG3_3d_MST_Nv_PREF = $file[++$i];
+      $TAVG3_3d_MST_Nv_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> tavg3_3d_rad_Nv" ) {
+      $TAVG3_3d_RAD_Nv_PREF = $file[++$i];
+      $TAVG3_3d_RAD_Nv_FILE = $file[++$i];
+
+    } elsif( $file[$i] =~ "==> inst3_3d_asm_Nv" ) {
+      $INST3_3d_ASM_Nv_PREF = $file[++$i];
+      $INST3_3d_ASM_Nv_FILE = $file[++$i];
+      
+    }
+  }
+
+  #-----------------------------------------------------------------------
+  # Make sure all variables are defined
+  #-----------------------------------------------------------------------
+  if ( $CONST_2d_ASM_Nx_PREF =~ "UNDEFINED" ) { &errorMsg( 2  ); }
+  if ( $CONST_2d_ASM_Nx_FILE =~ "UNDEFINED" ) { &errorMsg( 3  ); }
+  if ( $TAVG1_2d_FLX_Nx_PREF =~ "UNDEFINED" ) { &errorMsg( 4  ); }
+  if ( $TAVG1_2d_FLX_Nx_FILE =~ "UNDEFINED" ) { &errorMsg( 5  ); }
+  if ( $TAVG1_2d_LND_Nx_PREF =~ "UNDEFINED" ) { &errorMsg( 6  ); }
+  if ( $TAVG1_2d_LND_Nx_FILE =~ "UNDEFINED" ) { &errorMsg( 7  ); }
+  if ( $TAVG1_2d_RAD_Nx_PREF =~ "UNDEFINED" ) { &errorMsg( 8  ); }
+  if ( $TAVG1_2d_RAD_Nx_FILE =~ "UNDEFINED" ) { &errorMsg( 9  ); }
+  if ( $TAVG1_2d_SLV_Nx_PREF =~ "UNDEFINED" ) { &errorMsg( 10 ); }
+  if ( $TAVG1_2d_SLV_Nx_FILE =~ "UNDEFINED" ) { &errorMsg( 11 ); }
+  if ( $TAVG3_3d_ASM_Nv_PREF =~ "UNDEFINED" ) { &errorMsg( 12 ); }
+  if ( $TAVG3_3d_ASM_Nv_FILE =~ "UNDEFINED" ) { &errorMsg( 13 ); }
+  if ( $TAVG3_3d_CLD_Nv_PREF =~ "UNDEFINED" ) { &errorMsg( 14 ); }
+  if ( $TAVG3_3d_CLD_Nv_FILE =~ "UNDEFINED" ) { &errorMsg( 15 ); }
+  if ( $TAVG3_3d_MST_Ne_PREF =~ "UNDEFINED" ) { &errorMsg( 16 ); }
+  if ( $TAVG3_3d_MST_Ne_FILE =~ "UNDEFINED" ) { &errorMsg( 17 ); }
+  if ( $TAVG3_3d_MST_Nv_PREF =~ "UNDEFINED" ) { &errorMsg( 18 ); }
+  if ( $TAVG3_3d_MST_Nv_FILE =~ "UNDEFINED" ) { &errorMsg( 19 ); }
+  if ( $TAVG3_3d_RAD_Nv_PREF =~ "UNDEFINED" ) { &errorMsg( 20 ); }
+  if ( $TAVG3_3d_RAD_Nv_FILE =~ "UNDEFINED" ) { &errorMsg( 21 ); }
+  if ( $INST3_3d_ASM_Nv_PREF =~ "UNDEFINED" ) { &errorMsg( 22 ); }
+  if ( $INST3_3d_ASM_Nv_FILE =~ "UNDEFINED" ) { &errorMsg( 23 ); }
+
+  #-----------------------------------------------------------------------
+  # Replace tokens w/ date & time
+  #-----------------------------------------------------------------------
+  $CONST_2d_ASM_Nx_PREF =~ s/YYYY/$YEAR/g;
+  $CONST_2d_ASM_Nx_PREF =~ s/MM/$MONTH/g;
+  $CONST_2d_ASM_Nx_FILE =~ s/YYYY/$YEAR/g;
+  $CONST_2d_ASM_Nx_FILE =~ s/MM/$MONTH/g;
+  $CONST_2d_ASM_Nx_FILE =~ s/DD/$DAY/g;
+
+  $TAVG1_2d_FLX_Nx_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_FLX_Nx_PREF =~ s/MM/$MONTH/g;
+  $TAVG1_2d_FLX_Nx_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_FLX_Nx_FILE =~ s/MM/$MONTH/g;
+  $TAVG1_2d_FLX_Nx_FILE =~ s/DD/$DAY/g;
+
+  $TAVG1_2d_LND_Nx_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_LND_Nx_PREF =~ s/MM/$MONTH/g;
+  $TAVG1_2d_LND_Nx_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_LND_Nx_FILE =~ s/MM/$MONTH/g;
+  $TAVG1_2d_LND_Nx_FILE =~ s/DD/$DAY/g;
+
+  $TAVG1_2d_RAD_Nx_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_RAD_Nx_PREF =~ s/MM/$MONTH/g;
+  $TAVG1_2d_RAD_Nx_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_RAD_Nx_FILE =~ s/MM/$MONTH/g;
+  $TAVG1_2d_RAD_Nx_FILE =~ s/DD/$DAY/g;
+
+  $TAVG1_2d_SLV_Nx_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_SLV_Nx_PREF =~ s/MM/$MONTH/g;
+  $TAVG1_2d_SLV_Nx_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG1_2d_SLV_Nx_FILE =~ s/MM/$MONTH/g;
+  $TAVG1_2d_SLV_Nx_FILE =~ s/DD/$DAY/g;
+
+  $TAVG3_3d_ASM_Nv_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_ASM_Nv_PREF =~ s/MM/$MONTH/g;
+  $TAVG3_3d_ASM_Nv_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_ASM_Nv_FILE =~ s/MM/$MONTH/g;
+  $TAVG3_3d_ASM_Nv_FILE =~ s/DD/$DAY/g;
+
+  $TAVG3_3d_CLD_Nv_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_CLD_Nv_PREF =~ s/MM/$MONTH/g;
+  $TAVG3_3d_CLD_Nv_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_CLD_Nv_FILE =~ s/MM/$MONTH/g;
+  $TAVG3_3d_CLD_Nv_FILE =~ s/DD/$DAY/g;
+
+  $TAVG3_3d_MST_Ne_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_MST_Ne_PREF =~ s/MM/$MONTH/g;
+  $TAVG3_3d_MST_Ne_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_MST_Ne_FILE =~ s/MM/$MONTH/g;
+  $TAVG3_3d_MST_Ne_FILE =~ s/DD/$DAY/g;
+
+  $TAVG3_3d_MST_Nv_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_MST_Nv_PREF =~ s/MM/$MONTH/g;
+  $TAVG3_3d_MST_Nv_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_MST_Nv_FILE =~ s/MM/$MONTH/g;
+  $TAVG3_3d_MST_Nv_FILE =~ s/DD/$DAY/g;
+
+  $TAVG3_3d_RAD_Nv_PREF =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_RAD_Nv_PREF =~ s/MM/$MONTH/g;
+  $TAVG3_3d_RAD_Nv_FILE =~ s/YYYY/$YEAR/g;
+  $TAVG3_3d_RAD_Nv_FILE =~ s/MM/$MONTH/g;
+  $TAVG3_3d_RAD_Nv_FILE =~ s/DD/$DAY/g;
+
+  $INST3_3d_ASM_Nv_PREF =~ s/YYYY/$YEAR/g;
+  $INST3_3d_ASM_Nv_PREF =~ s/MM/$MONTH/g;
+  $INST3_3d_ASM_Nv_FILE =~ s/YYYY/$YEAR/g;
+  $INST3_3d_ASM_Nv_FILE =~ s/MM/$MONTH/g;
+  $INST3_3d_ASM_Nv_FILE =~ s/DD/$DAY/g;
+  
+  # List of files (and file sizes) on the GMAO FTP server
+  $LISTING = "$MET_DIR/listing";
+
+  # Array of ftp sites
+  @dirPaths = ( "$TAVG1_2d_FLX_Nx_PREF",
+                "$TAVG1_2d_LND_Nx_PREF",
+                "$TAVG1_2d_RAD_Nx_PREF",
+                "$TAVG1_2d_SLV_Nx_PREF",
+                "$TAVG3_3d_ASM_Nv_PREF",
+                "$TAVG3_3d_CLD_Nv_PREF",
+                "$TAVG3_3d_MST_Ne_PREF",
+                "$TAVG3_3d_MST_Nv_PREF",
+                "$TAVG3_3d_RAD_Nv_PREF",
+                "$INST3_3d_ASM_Nv_PREF" );
+  
+  # Array of file names to obtain
+  @files    = ( "$TAVG1_2d_FLX_Nx_FILE",
+                "$TAVG1_2d_LND_Nx_FILE",
+                "$TAVG1_2d_RAD_Nx_FILE",
+                "$TAVG1_2d_SLV_Nx_FILE",
+                "$TAVG3_3d_ASM_Nv_FILE",
+                "$TAVG3_3d_CLD_Nv_FILE",
+                "$TAVG3_3d_MST_Ne_FILE",
+                "$TAVG3_3d_MST_Nv_FILE",
+                "$TAVG3_3d_RAD_Nv_FILE",
+                "$INST3_3d_ASM_Nv_FILE" );
+
+  # Append the const_2d_chm_Fx file if necessary
+  if ( $DO_GET_CONST =~ "T" or $DO_GET_CONST =~ ".TRUE." ) {
+    @dirPaths = ( @dirPaths, "$CONST_2d_ASM_Nx_PREF" );
+    @files    = ( @files,    "$CONST_2d_ASM_Nx_FILE" );
+  }
+  
+  # Return 
+  return( $? );
+}
+#EOC
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: checkData
+#
+# !DESCRIPTION: Routine checkData tests  keeps waiting until all of the files
+#  are present on the remote server.
+#\\
+#\\
+# !INTERFACE:
+#
+sub checkData($$) {
+#
+# !INPUT PARAMETERS:
+#
+  my ( $dir, $file ) = @_;   # Downloaded file to be checked
+#
+# !CALLING SEQUENCE:
+#  &checkData( $fileName )
+#
+# !REVISION HISTORY:
+#  06 Aug 2013 - R. Yantosca - Initial version
+#  07 Aug 2013 - R. Yantosca - Now reload file listing if it can't be found
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  # Scalars
+  my $actualSize  = "";
+  my $filePath    = "";
+  my $grepCmd     = "";
+  my $grepOut     = "";
+  my $listCmd     = "";
+  my $listOut     = "";
+  my $targetSize  = "";
+
+  # Arrays
+  my @substr      = ();
+      
+  #-------------------------------
+  # checkData begins here!
+  #-------------------------------
+
+  # Wget command
+  if ( $VERBOSE ) {
+    $listCmd = "cd $MET_DIR; wget --no-remove-listing --user=anonymous --password= --cut-dirs=5 --retr-symlinks $dir; mv .listing listing; rm index.html*";
+  } else {
+    $listCmd = "cd $MET_DIR; wget --quiet --no-remove-listing --user=anonymous --password= --cut-dirs=5 --retr-symlinks $dir; mv .listing listing; rm index.html*";
+  }  
+    
+  # Get the file listing from the GMAO ftp site
+  $listOut     = qx( $listCmd );
+
+  # Complete path to the file in the download directory
+  $filePath    = "$MET_DIR/$file";
+
+  # Exit if we haven't downloaded the file yet
+  # This will prompt the file download to begin
+  if ( !( -f $filePath ) ) { return( -2 ); }
+
+  # Size of the downloaded file
+  $actualSize  = -s "$filePath";
+
+  # Find the target size of the file on the GMAO server 
+  # (which is in the .listing file in the download directory)
+  $grepCmd     = "grep $file $LISTING";
+  $grepOut     = qx( $grepCmd );
+  @substr      = split( ' ', $grepOut );
+  $targetSize  = "$substr[4]";
+
+  # The downloaded file size should match the size on the server
+  # or else return an error code
+  if ( $actualSize eq $targetSize ) { return(  0 );  }
+  else                              { return( -1 );  }
+}
+#EOC
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getData
+#
+# !DESCRIPTION: Routine getData downloads 1-day of MERRA2 data via the
+#  Unix wget command.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getData() {
+#
+# !CALLING SEQUENCE:
+#  &getData();   
+#
+# !REVISION HISTORY:
+#  24 Oct 2011 - R. Yantosca - Initial version, based on GEOS_5/perl/getGeos5
+#  25 Oct 2011 - R. Yantosca - Remove variables for previous day; unnecessary
+#  25 Oct 2011 - R. Yantosca - Updated comments
+#  12 Jan 2012 - R. Yantosca - Comment out sections that download the
+#                              tavg3_3d_odt_Nv and tavg3_3d_qdt_Nv files
+#  05 Aug 2013 - R. Yantosca - Modified for GEOS-FP (w/ Sajeev Philip)
+#  10 Dec 2015 - M. Sulprizio- Modified for MERRA2 met data    
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  # Scalars
+  my $dir     = "";
+  my $file    = "";
+  my $grepCmd = "";
+  my $msg     = "";
+  my $wgetCmd = "";
+  my $wgetOut = "";
+  my $status  = 0;
+  my $nfile   = 0;
+
+  #--------------------------------------------------------------------------
+  # Download files
+  #--------------------------------------------------------------------------
+  
+  # Loop over all collections
+  foreach $dir ( @dirPaths ) {
+
+    $file= $files[$nfile];
+
+    # Create command for downloading files in each collection
+    if ( $VERBOSE ) {
+      $wgetCmd = "cd $MET_DIR; wget -r -nH --user=anonymous --password= --cut-dirs=6 --retr-symlinks $dir/$file";
+    } else {
+      $wgetCmd = "cd $MET_DIR; wget --quiet -r -nH --user=anonymous --password= --cut-dirs=6 --retr-symlinks $dir/$file";
+    }
+
+    if ( $PRINTONLY ) {
+      
+      #----------------------------------------------------------------------
+      # If $PRINTONLY == 1, then just print the data download commands
+      # (useful for debugging)
+      #----------------------------------------------------------------------
+
+      # Print command
+      print "   $wgetCmd\n"; 
+
+    } else { 
+
+      #----------------------------------------------------------------------
+      # Otherwise, download the MERRA2 data
+      #----------------------------------------------------------------------
+
+      # Keep trying to download the file until we
+      # match the target size as listed on the server
+      while( $status = &checkData( $dir, $file ) ) {
+         $wgetOut = qx( $wgetCmd );
+         $nfile++;
+      }
+    }
+  }
+
+  #--------------------------------------------------------------------------
+  # Print info & return
+  #--------------------------------------------------------------------------
+
+  # Print the overall status code to stdout & log before exiting
+  $msg = &getLocalTime();
+  print "\ngetMerra2: Overall status code: $status\n\n";
+  print "getMerra2: Number of files successfully downloaded: $nfile\n\n";
+  print "Exiting at $msg\n";
+
+}
+#EOC
+#------------------------------------------------------------------------------
+#          Harvard University Atmospheric Chemistry Modeling Group            !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: main
+#
+# !DESCRIPTION: Main is the driver program for the getMerra2 script.
+#\\
+#\\
+# !INTERFACE:
+#
+sub main() {
+#
+# !CALLING SEQUENCE:
+#  &main( YYYYMMDD [0|1|2] );
+#
+# !REVISION HISTORY:
+#  24 Oct 2011 - R. Yantosca - Initial version, based on GEOS_5/perl/getGeos5
+#  05 Aug 2013 - R. Yantosca - Modified for GEOS-FP data (w/ Sajeev Philip)
+#  18 Oct 2013 - R. Yantosca - Use $N_FILES instead of the hardcoded 144
+#  14 Nov 2013 - R. Yantosca - Bug fix: now read doGeosFp.input
+#  30 Mar 2016 - M. Sulprizio- Pass Merra2_Driver.input to getDefaults so that
+#                              we can obtain the ftp address for each collection
+#  31 Mar 2016 - M. Sulprizio- Include option for verbose output
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES!
+#
+  # Scalars
+  my $errMsg    = "Usage: getMerra2 YYYYMMDD [ {0|1|2} ] ]\n";
+  my $printOnly = 0;
+  my $status    = 0;
+
+  # Arrays
+  my @fileList = ();
+
+  # Submit data download request.  Pass proper # of arguments.
+  if      ( scalar( @ARGV ) == 2 ) { 
+    $DATE = $ARGV[0];
+    if    ( $ARGV[1] == 2 ) { $VERBOSE   = 1; }
+    elsif ( $ARGV[1] == 1 ) { $PRINTONLY = 1; }
+  } elsif ( scalar( @ARGV ) == 1 ) {
+    $DATE = $ARGV[0];
+  } else { print "$errMsg\n"; exit(1); }
+ 
+  # Get info from the input files, also set default date
+  &getDefaults( "doMerra2.input", "../bin/Merra2_Driver.input" );
+
+##############################################################################
+# Prior to 3/30/16:
+# This feature does not work at the moment because we need to get collections
+# from different ftp sites (mps, 3/30/16)  
+#  # We expect $N_FILES files for a normal day's worth of MERRA2 met data
+#  while ( scalar( @fileList = &getFileList() ) != $N_FILES ) { 
+#    sleep( $SLEEP_SEC );
+#  }
+##############################################################################
+
+  # Download data files
+  $status = &getData();
+
+  # Return exit status
+  return( $status );
+}
+#EOC
+
+#------------------------------------------------------------------------------
+
+# Call main driver routine
+main();
+
+# Exit and pass status code to Unix shell
+exit( $? );

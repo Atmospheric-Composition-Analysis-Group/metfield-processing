@@ -1,0 +1,641 @@
+#!/usr/bin/perl -w
+
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !MODULE: moveMerra2
+#
+# !DESCRIPTION: This Perl script is used to move MERRA2 files for
+#  from the scratch directory space to the GEOS-Chem data directory space.
+#\\
+#\\
+# !USES:
+#
+  require 5.003;                # need this version of Perl or newer
+  use strict;                   # IMPLICIT NONE syntax
+#
+# !PUBLIC MEMBER FUNCTIONS:
+#
+# getDefaults($$)
+# getDirectories($)
+# getSysVars()
+# replaceTokens($)
+# checkDir($)
+# moveFiles()
+# main()
+#
+# !PUBLIC DATA MEMBERS:
+#
+				
+# General variables
+our $COMPRESSION       = "";
+our $DAY_STRING        = "";
+our $DEFAULTS_FOR_EXE  = "";
+our $HOME_DIRECTORY    = "";
+our $MONTH_STRING      = "";
+our $USER_ID           = "";
+our $YEAR_STRING       = "";
+
+# Data file names and directories
+our $DO_NEST_AS        = "";
+our $DATA_FILE_NEST_AS = "";
+our $TEMP_DIR_NEST_AS  = "";
+our $DATA_DIR_NEST_AS  = "";
+our $DO_NEST_EU        = "";
+our $DATA_FILE_NEST_EU = "";
+our $TEMP_DIR_NEST_EU  = "";
+our $DATA_DIR_NEST_EU  = "";
+our $DO_NEST_NA        = "";
+our $DATA_FILE_NEST_NA = "";
+our $TEMP_DIR_NEST_NA  = "";
+our $DATA_DIR_NEST_NA  = "";
+our $DO_NEST_SE        = "";
+our $DATA_FILE_NEST_SE = "";
+our $TEMP_DIR_NEST_SE  = "";
+our $DATA_DIR_NEST_SE  = "";
+our $DO_05x0625        = "";
+our $DATA_FILE_05x0625 = "";
+our $TEMP_DIR_05x0625  = "";
+our $DATA_DIR_05x0625  = "";
+our $DO_2x25           = "";
+our $DATA_FILE_2x25    = "";
+our $TEMP_DIR_2x25     = "";
+our $DATA_DIR_2x25     = "";
+our $DO_4x5            = "";
+our $DATA_FILE_4x5     = "";
+our $TEMP_DIR_4x5      = "";
+our $DATA_DIR_4x5      = "";
+#
+# !CALLING SEQUENCE:
+# moveMerra2 YYYYMMDD FILETYPE
+#
+# !REVISION HISTORY: 
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#  09 Sep 2015 - M. Sulprizio- Added global 0.5 x 0.625 grid
+#  30 Jan 2016 - J.-W. Xu    - Rename all CH domain to AS (Asia) domain
+#EOP
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getDefaults
+#
+# !DESCRIPTION:  Routine getDefaults reads the default values for 
+#  input quantities.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getDefaults($$) {
+#
+# !INPUT PARAMETERS:
+#
+  # $fileName : File containing default settings to be read
+  # $date     : YYYYMMDD date for which to process met data
+  my ( $fileName, $date ) = @_;
+#
+# !CALLING SEQUENCE:
+# &getDefaults( FILENAME, DATE );
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  # Local variables
+  my $line         = "";   
+  my @file         = "";
+  my @result       = "";
+
+  #--------------------------------------
+  # Read variable settings from the file
+  #--------------------------------------
+
+  # Read defaults file into an array (remove newlines)
+  open( I, "<$fileName" ) or die "Cannot open $fileName!\n";
+  chomp( @file = <I> );
+  close( I );
+
+  # Loop thru each line in the file
+  for ( my $i = 0; $i <  scalar( @file ); $i++ ) {
+
+    if ( $file[$i] =~ "==> Defaults for Executable" ) {
+      $DEFAULTS_FOR_EXE = $file[++$i];
+    } elsif ( $file[$i] =~ "==> netCDF compression" ) {
+      $COMPRESSION = $file[++$i];
+    }
+
+  }
+
+  # Date strings
+  $YEAR_STRING  = substr( $date, 0, 4 );
+  $MONTH_STRING = substr( $date, 4, 2 );
+  $DAY_STRING   = substr( $date, 6, 2 );
+
+  # Return normally
+  return(0);
+}
+#EOP
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getDirectories
+#
+# !DESCRIPTION:  Routine getDirectories reads the file and directory paths
+#  from the input file for the MERRA2 Fortran executable.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getDirectories($) {
+#
+# !INPUT PARAMETERS:
+#
+  # $fileName : File containing default settings to be read
+  my ( $fileName ) = @_;
+#
+# !CALLING SEQUENCE:
+# &getDirectories( FILENAME )
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  my $line     = "";   
+  my @file     = "";
+
+  #--------------------------------------
+  # Read variable settings from the file
+  #--------------------------------------
+
+  # Read defaults file into an array (remove newlines)
+  open( I, "<$fileName" ) or die "Cannot open $fileName!\n";
+  chomp( @file = <I> );
+  close( I );
+
+  # Loop thru each line in the file
+  for ( my $i = 0; $i < scalar( @file ); $i++ ) {
+
+    if ( $file[$i] =~ "==> Nested 0.5 x 0.625 AS output" ) {
+      $DO_NEST_AS        = $file[++$i];
+      $DATA_FILE_NEST_AS = $file[++$i];
+      $TEMP_DIR_NEST_AS  = $file[++$i];
+      $DATA_DIR_NEST_AS  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Nested 0.5 x 0.625 EU output" ) {
+      $DO_NEST_EU        = $file[++$i];
+      $DATA_FILE_NEST_EU = $file[++$i];
+      $TEMP_DIR_NEST_EU  = $file[++$i];
+      $DATA_DIR_NEST_EU  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Nested 0.5 x 0.625 NA output" ) {
+      $DO_NEST_NA        = $file[++$i];
+      $DATA_FILE_NEST_NA = $file[++$i];
+      $TEMP_DIR_NEST_NA  = $file[++$i];
+      $DATA_DIR_NEST_NA  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Nested 0.5 x 0.625 SE output" ) {
+      $DO_NEST_SE        = $file[++$i];
+      $DATA_FILE_NEST_SE = $file[++$i];
+      $TEMP_DIR_NEST_SE  = $file[++$i];
+      $DATA_DIR_NEST_SE  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Global 0.5 x 0.625 output" ) {
+      $DO_05x0625        = $file[++$i];
+      $DATA_FILE_05x0625 = $file[++$i];
+      $TEMP_DIR_05x0625  = $file[++$i];
+      $DATA_DIR_05x0625  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> 2 x 2.5 output" ) {
+      $DO_2x25           = $file[++$i];
+      $DATA_FILE_2x25    = $file[++$i];
+      $TEMP_DIR_2x25     = $file[++$i];
+      $DATA_DIR_2x25     = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> 4 x 5 output" ) {
+      $DO_4x5            = $file[++$i];
+      $DATA_FILE_4x5     = $file[++$i];
+      $TEMP_DIR_4x5      = $file[++$i];
+      $DATA_DIR_4x5      = $file[++$i];
+
+    }
+  }
+
+  # Don't move files if the temporary directory string is the same as the 
+  # data directory string.  This allows us to skip using the temporary 
+  # directory.  You must edit bin/Merra2Driver.input accordingly.
+  # is the same as the data directory string
+  if ( $TEMP_DIR_NEST_AS eq $DATA_DIR_NEST_AS ) { $DO_NEST_AS = "F"; }
+  if ( $TEMP_DIR_NEST_EU eq $DATA_DIR_NEST_EU ) { $DO_NEST_EU = "F"; }
+  if ( $TEMP_DIR_NEST_NA eq $DATA_DIR_NEST_NA ) { $DO_NEST_NA = "F"; }
+  if ( $TEMP_DIR_NEST_SE eq $DATA_DIR_NEST_SE ) { $DO_NEST_SE = "F"; }
+  if ( $TEMP_DIR_05x0625 eq $DATA_DIR_05x0625 ) { $DO_05x0625 = "F"; }
+  if ( $TEMP_DIR_2x25    eq $DATA_DIR_2x25    ) { $DO_2x25    = "F"; }
+  if ( $TEMP_DIR_4x5     eq $DATA_DIR_4x5     ) { $DO_4x5     = "F"; }
+
+  # Return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getSysVars
+#
+# !DESCRIPTION: Routine getSysVars returns system variables \$USER and \$HOME.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getSysVars() {
+#
+# !CALLING SEQUENCE:
+# &getSysVars();
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # User ID (remove newline)
+  $USER_ID = qx( echo \$USER );
+  chomp( $USER_ID );
+  
+  # Home directory (remove newline)
+  $HOME_DIRECTORY = qx( echo \$HOME );
+  chomp( $HOME_DIRECTORY );
+
+  # Return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: replaceTokens
+#
+# !DESCRIPTION: Subroutine replaceTokens replaces tokens in a variable.  
+#\\
+#\\
+# !INTERFACE:
+#
+sub replaceTokens($$) {
+#
+# !INPUT PARAMETERS:
+#
+  # $var: Name of the string in which to replace tokens
+  my ( $var, $fileType ) = @_; 
+#
+# !CALLING SEQUENCE:
+#  $var = &replaceTokens( $var );
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # Replace tokens in the variable names
+  $var =~ s/{HOME}/$HOME_DIRECTORY/g;
+  $var =~ s/{USER}/$USER_ID/g;
+  $var =~ s/YYYY/$YEAR_STRING/g;
+  $var =~ s/MM/$MONTH_STRING/g;
+  $var =~ s/DD/$DAY_STRING/g;
+  $var =~ s/%%%%%%/$fileType/g;
+ 
+  # Return to calling program
+  return( $var );
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: checkDir
+#
+# !DESCRIPTION: Subroutine checkDir checks to see if a directory exists.
+#\\
+#\\
+# !INTERFACE:
+#
+sub checkDir($) {
+#
+# !INPUT PARAMETERS:
+#
+  # $dir : Directory to be checked
+  my ( $dir ) = @_;
+#
+# !CALLING SEQUENCE:
+#  &checkDir( $dir );
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # Stop with error if directory doesn't exist
+  if ( !( -d $dir ) ) { 
+    print "moveMerra2 ERROR: Directory does not exist: $dir\n";
+    exit(1)
+  }
+  
+  # Otherwise return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: moveFiles
+#
+# !DESCRIPTION: Subroutine moveFiles moves the processed MERRA2 met field 
+#  files from the temporary directory to the data directory.
+#\\
+#\\
+# !INTERFACE:
+#
+sub moveFiles(@) {
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#  13 Aug 2015 - R. Yantosca - Now use nccopy -d5 for compression
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  my $cmd      = "";
+  my $comp     = "$COMPRESSION";
+  my $dir      = ""; 
+  my $mask     = "";
+  my $result   = "";
+  my $target   = "";
+  my $fileType = "";
+
+  # Skip the first argument, which is the date
+  for ( my $i=1; $i<=$#ARGV; $i++ ) {
+    
+    # Get the file type (e.g. CN, A1, etc.)
+    $fileType = $_[$i];
+
+    #-------------------------------
+    # Nested Asia grid 
+    #-------------------------------
+    if ( $DO_NEST_AS =~ "T" ) {
+
+      # Temporary file mask
+      $mask = "$TEMP_DIR_NEST_AS$DATA_FILE_NEST_AS";
+      $mask = &replaceTokens( $mask, $fileType );
+  
+      # Data directory path
+      $dir = "$DATA_DIR_NEST_AS";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );
+      
+      # New file name
+      $target = "$dir$DATA_FILE_NEST_AS";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }
+
+    #-------------------------------
+    # Nested Europe grid
+    #-------------------------------
+    if ( $DO_NEST_EU =~ "T" ) {
+
+      # Temporary file mask
+      $mask = "$TEMP_DIR_NEST_EU$DATA_FILE_NEST_EU";
+      $mask = &replaceTokens( $mask, $fileType );
+  
+      # Data directory path
+      $dir = "$DATA_DIR_NEST_EU;";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );
+
+      # New file name
+      $target = "$dir$DATA_FILE_NEST_EU";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }	
+
+    #-------------------------------
+    # Nested N. America grid
+    #-------------------------------
+    if ( $DO_NEST_NA =~ "T" ) {
+
+      # Temporary file mask
+      $mask = "$TEMP_DIR_NEST_NA$DATA_FILE_NEST_NA";
+      $mask = &replaceTokens( $mask, $fileType );
+  
+      # Data directory path
+      $dir = "$DATA_DIR_NEST_NA";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );
+
+      # New file name
+      $target = "$dir$DATA_FILE_NEST_NA";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd  = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }				
+
+    #-------------------------------
+    # Nested SE Asia grid
+    #-------------------------------
+    if ( $DO_NEST_SE =~ "T" ) {
+
+      # Temporary file mask
+      $mask = "$TEMP_DIR_NEST_NA$DATA_FILE_NEST_SE";
+      $mask = &replaceTokens( $mask, $fileType );
+  
+      # Data directory path
+      $dir = "$DATA_DIR_NEST_SE";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );
+
+      # New file name
+      $target = "$dir$DATA_FILE_NEST_SE";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd  = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }	
+
+    #-------------------------------
+    # 0.5 x 0.625 global grid
+    #-------------------------------
+    if ( $DO_05x0625 =~ "T" ) {
+
+      # File path to temporary directory
+      $mask = "$TEMP_DIR_05x0625$DATA_FILE_05x0625";
+      $mask = &replaceTokens( $mask, $fileType );
+    
+      # File path to data directory
+      $dir = "$DATA_DIR_05x0625";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );    
+
+      # New file name
+      $target = "$dir$DATA_FILE_05x0625";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd  = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }    
+
+    #-------------------------------
+    # 2 x 2.5 global grid
+    #-------------------------------
+    if ( $DO_2x25 =~ "T" ) {
+
+      # File path to temporary directory
+      $mask = "$TEMP_DIR_2x25$DATA_FILE_2x25";
+      $mask = &replaceTokens( $mask, $fileType );
+    
+      # File path to data directory
+      $dir = "$DATA_DIR_2x25";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );    
+
+      # New file name
+      $target = "$dir$DATA_FILE_2x25";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+    
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }    
+
+    #-------------------------------
+    # 4 x 5 global grid
+    #-------------------------------
+    if ( $DO_4x5 =~ "T" ) {
+
+      # File path to temporary directory
+      $mask = "$TEMP_DIR_4x5$DATA_FILE_4x5";
+      $mask = &replaceTokens( $mask, $fileType );
+    
+      # File path to data directory
+      $dir = "$DATA_DIR_4x5";
+      $dir = &replaceTokens( $dir, $fileType );
+      &checkDir( $dir );    
+
+      # New file name
+      $target = "$dir$DATA_FILE_4x5";
+      $target = &replaceTokens( $target, $fileType );
+
+      # Move command (list the directory first to force an automount)
+      $cmd = "ls $dir > /dev/null; nccopy -d$comp $mask $target; rm -f $mask";
+
+      # Move the files
+      print "$cmd\n";
+      $result = qx( $cmd );
+    }
+  }
+
+  # Return normally
+  return( 0 );
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: main
+#
+# !DESCRIPTION: Routine main is the driver routine for the moveMerra2 script.
+#\\
+#\\
+# !INTERFACE:
+#
+sub main() {
+#
+# !CALLING SEQUENCE:
+#  &main();
+#
+# !REVISION HISTORY:
+#  13 Aug 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+
+  # Error check arguments
+  if ( scalar( @ARGV ) == 0 ) { 
+    print "Usage: moveMerra2 YYYYMMDD FILETYPE\n"; 
+    exit(1);
+  }
+
+  # Get default values
+  &getDefaults( "doMerra2.input", $ARGV[0] );
+
+  # Get data & temporary directories
+  &getDirectories( $DEFAULTS_FOR_EXE );
+
+  # Get system variables
+  &getSysVars();
+
+  # Run jobs
+  &moveFiles( @ARGV );
+
+  # Return normally
+  return(0);
+}
+#EOC
+
+#------------------------------------------------------------------------------
+
+# Start main program
+main();
+
+# Exit normally
+exit(0);

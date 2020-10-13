@@ -13,6 +13,8 @@
 set -u
 : "$YEAR" "$MONTH"
 
+. /etc/bashrc
+
 cd /storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing
 
 export GEOS_FP_DOWNLOAD_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/GEOS_FP-raw

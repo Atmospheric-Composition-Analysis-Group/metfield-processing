@@ -1,0 +1,65 @@
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !INCLUDE: doMerra2.input
+#
+# !DESCRIPTION: Input file specifies the various default settings for
+# directories etc. for the doMerra2Multi script.
+#\\
+#\\
+# !REMARKS:
+# Login String           : Username:Password from your GES-DISC subscription
+# Raw Met Data Directory : Dir where MERRA2 "raw" met data is found
+# Code Directory         : Dir where the executable file is found
+# Job Directory          : Dir where job scripts are found
+# Log Directory          : Dir where output logs will be sent
+# Temporary Directory    : Dir for temporary files (can be same as Job Dir)
+# Program Executable     : Name of executable file (should be "Merra2_Driver")
+# Submit Statement       : {JOB} will be replaced w/ the actual job script name
+#
+# !REMARKS:
+#  You need to add a \ before the @ sign in email addresses,
+#  otherwise Perl won't know how to deal with it.
+#
+# !REVISION HISTORY:
+#  31 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#
+
+==> Raw Met Data Directory
+//data10/jmeng/MERRA2_Download/MERRA2_Glob/merra2_raw/202008/
+
+==> Code Directory
+../bin
+
+==> Job Directory
+../jobs
+
+==> Log Directory
+../logs
+
+==> Temporary Directory
+../jobs
+
+==> Program Executable
+Merra2_Driver.x
+
+==> Defaults for Executable
+../bin/Merra2_Driver.input
+
+==> Submit Statement
+{JOB} &
+
+==> Sleep Time [s]
+300
+
+==> Emails for Notification
+Junwei.Xu\@dal.ca
+
+==> netCDF compression level
+5
+
+END OF FILE
+#EOP
+#------------------------------------------------------------------------------

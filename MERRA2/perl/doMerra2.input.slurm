@@ -1,0 +1,75 @@
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !INCLUDE: doMerra2.input  
+#
+# !DESCRIPTION: Input file specifies the various default settings for
+# directories etc. for the doMerra2Multi script.
+#\\
+#\\
+# !REMARKS:
+# Login String           : Username:Password from your GES-DISC subscription
+# Raw Met Data Directory : Dir where MERRA2 "raw" met data is found
+# Code Directory         : Dir where the executable file is found
+# Job Directory          : Dir where job scripts are found
+# Log Directory          : Dir where output logs will be sent
+# Temporary Directory    : Dir for temporary files (can be same as Job Dir)
+# Program Executable     : Name of executable file (should be "Merra2_Driver")
+# Submit Statement       : {JOB} will be replaced w/ the actual job script name
+#
+# !REMARKS:
+#  You need to add a \ before the @ sign in email addresses,
+#  otherwise Perl won't know how to deal with it.
+#
+# !REVISION HISTORY: 
+#  31 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#
+
+==> Raw Met Data Directory
+/as/scratch/bmy/MERRA2/raw
+
+==> Code Directory
+../bin
+
+==> Job Directory
+../jobs
+
+==> Log Directory
+../logs
+
+==> Temporary Directory
+../jobs
+
+==> Program Executable
+Merra2_Driver.x
+
+==> Defaults for Executable
+../bin/Merra2_Driver.input
+
+==> Submit Statement
+{JOB} &
+
+==> Sleep Time [s]
+300
+
+==> Emails for Notification
+yantosca\@seas.harvard.edu
+
+==> netCDF compression level
+5
+
+==> SLURM parameters
+#SBATCH -n 4
+export OMP_NUM_THREADS=4
+#SBATCH -t 0-00:05
+#SBATCH --mem-per-cpu=2500
+#SBATCH -qos=debug
+#SBATCH --mail-user=yantosca@seas.harvard.edu
+#SBATCH -o {LOGDIR}/SLURM.{DSTR}.stdout.log
+#SBATCH -e {LOGDIR}/SLURM.{DSTR}.stderr.log
+
+END OF FILE
+#EOP
+#------------------------------------------------------------------------------

@@ -1,0 +1,30 @@
+#!/bin/tcsh -f
+
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: runMet
+#
+# !DESCRIPTION: Subroutine runMet runs the executable files Merra2_Driver0.x,
+#  thru Merra2_Driver2.x simultaneously.
+#\\
+#\\
+# !INTERFACE:
+#
+# !CALLING SEQUENCE:
+#  runMet script1 script2 script3
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+$1 &   # CN, A1, I3 
+$2 &   # A3cld, A3dyn
+$3 &   # A3mstC, A3mstE
+
+exit(0);
+#EOC

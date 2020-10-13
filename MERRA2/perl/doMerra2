@@ -1,0 +1,554 @@
+#!/usr/bin/perl -w
+
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !MODULE: doMerra2
+#
+# !DESCRIPTION: This Perl script is the driver script for Merra2_Driver, the
+#  Fortran code for processing MERRA2 met field data.  This script
+#  submits several executables in separate threads to achieve coarse-grain
+#  parallelization.
+#\\
+#\\
+# !USES:
+#
+  require 5.003;        # need this version of Perl or newer
+  use strict;           # Do not allow symbolic references
+#
+# !PUBLIC MEMBER FUNCTIONS:
+#
+# getDefaults($$)
+# getSysVars()
+# checkInputs()
+# replaceTokens($)
+# checkDir($)
+# runJob($)
+# main()
+#
+# !PUBLIC DATA MEMBERS:
+#
+  #============================================================
+  # Define global variables (seen in all subroutines below)
+  #============================================================
+  our $CODE_DIRECTORY    = "";
+  our $DATE_FILE         = "";
+  our $DATE_STRING       = "";
+  our $DAY_STRING        = "";
+  our $EMAIL_STRING      = "";
+  our $EXECUTABLE        = "";
+  our $HOME_DIRECTORY    = "";
+  our $JOB_DIRECTORY     = "";
+  our $JOB_FILE          = "";
+  our $LOG_DIRECTORY     = "";
+  our $LOG_ERR           = "";
+  our $LOG_FILE          = "";
+  our $MET_DIRECTORY     = "";
+  our $MONTH_STRING      = "";
+  our $N_FILES           = 10;
+  our $SUBMIT            = "";
+  our $SLURM_PARAMETERS  = "";
+  our $TEMP_DIRECTORY    = "";
+  our $USER_ID           = "";
+  our $VERSION_ID        = "";
+  our $YEAR_STRING       = "";
+#
+# !CALLING SEQUENCE:
+#  doMerra2Multi YYYYMMDD
+#
+# !REMARKS:
+#  For processing MERRA-2 data.
+#
+# !REVISION HISTORY: 
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getDefaults
+#
+# !DESCRIPTION:  Routine getDefaults reads the default values for 
+#  input quantities.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getDefaults($$) {
+#
+# !INPUT PARAMETERS:
+#
+  # $fileName : File containing default settings to be read
+  # $date     : YYYYMMDD date for which to process met data
+  my ( $fileName, $date ) = @_;
+#
+# !CALLING SEQUENCE:
+# &getDefaults( FILENAME, DATE );
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#  21 Aug 2015 - R. Yantosca - Now read SLURM parameters
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  my $line = "";   
+  my @file = "";
+
+  #--------------------------------------
+  # Read variable settings from the file
+  #--------------------------------------
+
+  # Read defaults file into an array (remove newlines)
+  open( I, "<$fileName" ) or die "Cannot open $fileName!\n";
+  chomp( @file = <I> );
+  close( I );
+
+  # Loop thru each line in the file
+  for ( my $i = 0; $i < scalar( @file ); $i++ ) {
+
+    if ( $file[$i] =~ "==> Submit Statement" ) {
+      $SUBMIT = $file[++$i];
+       
+    } elsif ( $file[$i] =~ "==> Code Directory" ) {
+      $CODE_DIRECTORY = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Job Directory" ) {
+      $JOB_DIRECTORY = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Log Directory" ) {
+      $LOG_DIRECTORY  = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Temporary Directory" ) {
+      $TEMP_DIRECTORY = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Program Executable" ) {
+      $EXECUTABLE = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Emails for Notification" ) {
+      $EMAIL_STRING = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> Raw Met Data Directory" ) {
+      $MET_DIRECTORY = $file[++$i];
+
+    } elsif ( $file[$i] =~ "==> SLURM parameters" ) {
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+      $SLURM_PARAMETERS .= "$file[++$i]\n";
+
+    }
+  }
+
+  #--------------------------------------
+  # Define other variables
+  #--------------------------------------
+
+  # Date strings
+  $DATE_STRING  = "$date";
+  $YEAR_STRING  = substr( $date, 0, 4 );
+  $MONTH_STRING = substr( $date, 4, 2 );
+  $DAY_STRING   = substr( $date, 6, 2 );
+
+  # File to pass date to F90 code
+  $DATE_FILE    = "$TEMP_DIRECTORY/$DATE_STRING.$$";
+
+  # Log error file
+  $LOG_ERR      = "$LOG_DIRECTORY/log.doMerra2.error";
+
+  # Log file
+  $LOG_FILE     = "$LOG_DIRECTORY/log.doMerra2.{DSTR}.$$";
+
+  # Job script
+  $JOB_FILE     = "$JOB_DIRECTORY/job.doMerra2.{DSTR}.$$";  
+
+  # Return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: getSysVars
+#
+# !DESCRIPTION: Routine getSysVars returns system variables \$USER and \$HOME.
+#\\
+#\\
+# !INTERFACE:
+#
+sub getSysVars() {
+#
+# !CALLING SEQUENCE:
+# &getSysVars();
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # User ID (remove newline)
+  $USER_ID = qx( echo \$USER );
+  chomp( $USER_ID );
+  
+  # Home directory (remove newline)
+  $HOME_DIRECTORY = qx( echo \$HOME );
+  chomp( $HOME_DIRECTORY );
+
+  # Return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: checkInputs
+#
+# !DESCRIPTION: Routine checkInputs does the following:
+# \begin{enumerate}
+# \item Replaces string tokens in variables with replacement text
+# \item Checks to see if directories exist
+# \end{enumerate}
+#
+# !INTERFACE:
+#
+sub checkInputs() {
+#
+# !CALLING SEQUENCE:
+# &checkInputs();
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#  21 Aug 2015 - R. Yantosca - Now replace tokens in SLURM parameters
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  #---------------------------------
+  # Script file & directory names
+  #---------------------------------
+
+  # Replace tokens
+  $CODE_DIRECTORY    = &replaceTokens( $CODE_DIRECTORY   );
+  $JOB_DIRECTORY     = &replaceTokens( $JOB_DIRECTORY    );
+  $JOB_FILE          = &replaceTokens( $JOB_FILE         );
+  $LOG_DIRECTORY     = &replaceTokens( $LOG_DIRECTORY    );
+  $LOG_ERR           = &replaceTokens( $LOG_ERR          );
+  $LOG_FILE          = &replaceTokens( $LOG_FILE         );
+  $SUBMIT            = &replaceTokens( $SUBMIT           );
+  $TEMP_DIRECTORY    = &replaceTokens( $TEMP_DIRECTORY   );
+  $SLURM_PARAMETERS  = &replaceTokens( $SLURM_PARAMETERS );
+
+  # Check if directories exists
+  &checkDir( $CODE_DIRECTORY );
+  &checkDir( $JOB_DIRECTORY  );
+  &checkDir( $LOG_DIRECTORY  );
+  &checkDir( $TEMP_DIRECTORY );
+  &checkDir( $MET_DIRECTORY  );
+
+  # Return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: replaceTokens
+#
+# !DESCRIPTION: Subroutine replaceTokens replaces tokens in a variable.  
+#\\
+#\\
+# !INTERFACE:
+#
+sub replaceTokens($) {
+#
+# !INPUT PARAMETERS:
+#
+  # $var: Name of the string in which to replace tokens
+  my ( $var ) = @_; 
+#
+# !CALLING SEQUENCE:
+#  $var = &replaceTokens( $var );
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # Replace tokens in the variable names
+  $var =~ s/{DSTR}/$DATE_STRING/g;
+  $var =~ s/{HOME}/$HOME_DIRECTORY/g;
+  $var =~ s/{JOB}/$JOB_FILE/g;
+  $var =~ s/{JOBDIR}/$JOB_DIRECTORY/g;
+  $var =~ s/{LOGDIR}/$LOG_DIRECTORY/g;
+  $var =~ s/{LOGERR}/$LOG_ERR/g;
+  $var =~ s/{USER}/$USER_ID/g;
+  $var =~ s/YYYY/$YEAR_STRING/g;
+  $var =~ s/MM/$MONTH_STRING/g;
+  $var =~ s/DD/$DAY_STRING/g;
+
+  # Return to calling program
+  return( $var );
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: checkDir
+#
+# !DESCRIPTION: Subroutine checkDir checks to see if a directory exists.
+#\\
+#\\
+# !INTERFACE:
+#
+sub checkDir($) {
+#
+# !INPUT PARAMETERS:
+#
+  # $dir : Directory to be checked
+  my ( $dir ) = @_;
+#
+# !CALLING SEQUENCE:
+#  &checkDir( $dir );
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+
+  # Stop with error if directory doesn't exist
+  if ( !( -d $dir ) ) { 
+    print "doMerra2: ERROR: Directory does not exist: $dir\n";
+    exit(1)
+  }
+  
+  # Otherwise return normally
+  return(0);
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: makeJobFile
+#
+# !DESCRIPTION: Subroutine makeJobFile creates a job script for each 
+#  process.  The thread number (0,1,2) is appended to the script names and
+#  log files.
+#\\
+#\\
+# !INTERFACE:
+#
+sub makeJobFile() {
+#
+#
+# !INPUT PARAMETERS:
+#
+#
+# !CALLING SEQUENCE:
+#  &runJob()   # Runs executable Merra2_Driver0.x
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#  31 Jul 2015 - R. Yantosca - For now, disable email notification
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+#
+# !LOCAL VARIABLES:
+#
+  # Pick the proper file types
+  my $fileTypes = "A1 I3 A3cld A3dyn A3mstC A3mstE"; 
+
+  # Create shadow variables
+  my $exeFile   = $EXECUTABLE;
+  my $jobFile   = $JOB_FILE;
+  my $logFile   = $LOG_FILE;
+
+  #-----------------------------------------
+  # Create a file with the date of the data
+  #-----------------------------------------
+
+  # Get the version ID of the 
+
+  # Save date in a file to pass to the F90 code
+  # Also save the version ID for the netCDF attributes
+  open( O, ">$DATE_FILE" ) or die "Cannot open $DATE_FILE!\n";
+  print O "$DATE_STRING\n";
+  print O "$VERSION_ID\n";
+  close( O );
+
+  #-----------------------------------------
+  # Define job script in a "here" document
+  #-----------------------------------------
+
+  # Create HERE document
+  my $txt =<<EOF;
+#!/usr/bin/perl -w
+#{SLURM_PARAMETERS}
+
+# Local variables
+my \$sLog  = qq($logFile);
+
+# Make files world-readable
+umask(022);
+
+# Echo starting time
+qx( echo "===========================================" >> \$sLog );
+qx( echo "doMerra2: Extracting MERRA2 Met Data!"       >> \$sLog );
+qx( echo "Started on `date`"                           >> \$sLog );
+qx( echo                                               >> \$sLog );
+
+# List the temp directory first to force a directory mount
+qx( ls $TEMP_DIRECTORY > /dev/null );
+
+# Run the GEOS-5 data extraction code
+qx( umask 022; cd $CODE_DIRECTORY; ./$exeFile < $DATE_FILE >> \$sLog );
+
+# Move files from the temp directory to the data directory
+qx( ./moveMerra2 $DATE_STRING $fileTypes >> \$sLog );
+
+# Remove the date file
+qx( rm -f $DATE_FILE >> /dev/null ); 
+
+# Echo ending time
+qx( echo                      >> \$sLog );
+qx( echo "Finished on `date`" >> \$sLog );
+qx( echo                      >> \$sLog );
+
+exit(0);
+EOF
+
+  # Add the SLURM parameters just below the shebang line
+  $txt =~ s/\#\{SLURM_PARAMETERS}/$SLURM_PARAMETERS/g;
+
+  # Write job script to a file
+  open( O, ">$jobFile" ) or die "Cannot open $jobFile\n";
+  print O "$txt\n";
+  close( O );
+
+  # Make run script executable
+  chmod( 0755, $jobFile );
+
+  # Return normally
+  return( 0 );
+}
+#EOC
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !IROUTINE: main
+#
+# !DESCRIPTION: Routine main is the driver routine for the doGeos5 script.
+#\\
+#\\
+# !INTERFACE:
+#
+sub main() {
+#
+# !CALLING SEQUENCE:
+#  &main();
+#
+# !REVISION HISTORY:
+#  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
+#EOP
+#------------------------------------------------------------------------------
+#
+# !LOCAL VARIABLES:
+#
+  # Scalars
+  my $status  = 0;
+  my $listCmd = "";
+  my $cmd     = "";
+  my $file    = "";
+
+  # Arrays
+  my @files   = ();
+  my @result  = ();
+
+  # Error check arguments
+  if ( scalar( @ARGV ) == 0 ) { 
+    print "Usage: doMerra2 YYYYMMDD\n"; 
+    exit(1);
+  }
+
+  # Get default values
+  &getDefaults( "doMerra2.input", $ARGV[0] );
+
+  # Quick & dirty test if all the files are present in the met dir
+  # Not an exhaustive check but this should be good enough to prevent the
+  # met field code from starting if there aren't enough files. (bmy, 8/7/13)
+  $listCmd = "ls -1 $MET_DIRECTORY/MERRA2*"."@ARGV"."*";
+  chomp( @files = qx( $listCmd ) );
+
+  # Check if files have been downloaded properly
+  foreach $file ( @files ) { 
+
+    # If file is found, increment list
+    if ( -f  $file ) { $status++; } 
+ 
+    # Get the version ID from the tavg1_2d_flx_Nx collection file
+    # (this should be the same for all files)
+    if ( $file =~ m/tavg1_2d_flx_Nx/ ) { 
+      $cmd        = "ncdump -c $file | grep VersionID";
+      $VERSION_ID = qx/$cmd/;
+      chomp( $VERSION_ID );
+      $VERSION_ID =~ s/[a-zA-Z\s\:\;\"\=]//g;
+    }  
+  }
+
+  # Make sure we match the expected # of files
+  if ( $status == $N_FILES ) { 
+    print "doMerra2: All files present!  Now processing met for $ARGV[0]!\n"; 
+  } else {
+    print "doMerra2: Not enough raw met files for $ARGV[0]!\n"; 
+    print "Expected $N_FILES got $status\n";
+    exit(1); 
+  }
+
+  # Get system variables
+  &getSysVars();
+
+  # Replace tokens w/ values and error check directories
+  &checkInputs();
+
+  # Write the job file and submit it to the queue
+  &makeJobFile();
+
+  # Execute job file
+  qx($JOB_FILE);
+
+  # Return normally
+  return(0);
+}
+#EOC
+
+#------------------------------------------------------------------------------
+
+# Start main program
+main();
+
+# Exit normally
+exit(0);
