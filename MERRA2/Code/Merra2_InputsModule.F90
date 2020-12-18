@@ -694,7 +694,7 @@ MODULE Merra2_InputsModule
     IF ( rc /= 0 ) THEN 
        WRITE( 6, '(a)' ) 'Cannot open ' // TRIM( fileName )
     ENDIF
-
+    
     ! Read data
     DO 
 

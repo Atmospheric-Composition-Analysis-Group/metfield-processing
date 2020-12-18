@@ -107,7 +107,7 @@ MODULE Merra2_UtilityModule
 !
 ! !RETURN VALUE:
 !
-    CHARACTER(LEN=255)             :: fileName   ! Just the filename part
+    CHARACTER(LEN=512)             :: fileName   ! Just the filename part
 ! 
 ! !REVISION HISTORY: 
 !  28 Jul 2015 - R. Yantosca - Initial version, based on GEOS-FP
@@ -118,8 +118,8 @@ MODULE Merra2_UtilityModule
 ! !LOCAL VARIABLES:
 !
     INTEGER            :: F
-    INTEGER            :: nFields
-    CHARACTER(LEN=255) :: fields(50)  ! Allow for 50 subdirs
+    INTEGER            :: nFields=0
+    CHARACTER(LEN=512) :: fields(50)  ! Allow for 50 subdirs
 
     ! Split the data field list by commas into an array
     CALL makeCharArrayFromCharList( pathName, '/', fields )

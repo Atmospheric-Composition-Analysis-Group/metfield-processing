@@ -28,7 +28,7 @@
 #
 
 ==> Raw Met Data Directory
-//data10/jmeng/MERRA2_Download/MERRA2_Glob/merra2_raw/202008/
+/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/MERRA2-raw/2020/08/
 
 ==> Code Directory
 ../bin

@@ -1,4 +1,15 @@
 #!/bin/bash
+#BSUB -n 12
+#BSUB -R "rusage[mem=150GB] span[hosts=1]"
+#BSUB -q general
+#BSUB -W 168:00
+#BSUB -w "DownloadMERRA2"
+#BSUB -a 'docker(registry.gsc.wustl.edu/sleong/base-engineering)'
+#BSUB -g /liam.bindle/downloads
+#BSUB -J "RegridMERRA2"
+#BSUB -Ne
+#BSUB -u liam.bindle@wustl.edu
+#BSUB -o /storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/logs/regrid-MERRA2_${YEAR}${MONTH}-%J.txt
 
 # Script to process merra-2 met fields for 200404
 # MERRA2_100.*.19800101.nc4
@@ -6,6 +17,8 @@
 # MERRA2_300.*.20010101.nc4
 # MERRA2_400.*.20110101.nc4
 # leap years: 2000 2004 2008 2012 2016
+. /etc/bashrc
+
 set -x
 set -u
 : "$YEAR" "$MONTH"

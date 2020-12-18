@@ -175,6 +175,7 @@ MODULE Merra2_A1Module
     CALL NcDef_Glob_Attributes( fOut, 'References',           TRIM( lName ) )
 
     ! Filename
+    write(*,*) 'This NotDir call is okay with outFileName:',TRIM(outFileName)
     lName = NotDir( outFileName )
     CALL NcDef_Glob_Attributes( fOut, 'Filename',             TRIM( lName ) )
     

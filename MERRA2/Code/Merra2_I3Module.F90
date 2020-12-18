@@ -156,6 +156,8 @@ MODULE Merra2_I3Module
     CALL NcDef_Glob_Attributes( fOut, 'References',           TRIM( lName ) )
                                                               
     ! Filename                                                
+    write(IU_LOG,*) 'About to crash with outFileName:',TRIM(outFileName)
+    flush(IU_LOG)
     lName = NotDir( outFileName )                             
     CALL NcDef_Glob_Attributes( fOut, 'Filename',             TRIM( lName ) )
     

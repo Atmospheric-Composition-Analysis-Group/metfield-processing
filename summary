@@ -1,0 +1,90 @@
+#!/bin/bash
+#set -x
+set -u
+: "$ARCHIVE"
+
+NSTEPS=6
+update_pbar() {
+    local w=60 p=$1;  shift
+    printf -v equals "%*s" "$(( $p*$w/$NSTEPS ))" ""; equals=${equals// /=};
+    printf "\r\e[K|%-*s| %s" "$w" "$equals"; 
+}
+
+update_pbar 0
+
+function count_files() {
+    ls -1 $1 2>/dev/null | wc -l
+}
+
+function myprint() {
+    if echo "$2" | grep -q '\([0-9][0-9]*\)/\1'; then
+        START_COLOR="\e[32m"
+        END_COLOR="\e[m"
+    elif echo "$2" | grep -q '[0-9][0-9]*/[0-9][0-9]*'; then
+        START_COLOR="\x1B[31m"
+        END_COLOR="\e[m"
+    else
+        START_COLOR="\e[m"
+        END_COLOR="\e[m"
+    fi
+
+    printf " %-30s $START_COLOR%s$END_COLOR\n" "$1" "$2"
+}
+
+case $ARCHIVE in
+    GEOSFP)
+        YEAR=${YEAR:=$(date --date='-1 month' +%Y)}
+        MONTH=${MONTH:=$(date --date='-1 month' +%m)}
+        DOWNLOAD_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/GEOS_FP-raw/$YEAR/$MONTH
+        DOWNLOAD_EXPECTED_PER_DAY=144
+        PROCESSED_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/scratch/GEOS_FP/$YEAR/$MONTH/nc4
+        ;;
+    MERRA2)
+        YEAR=${YEAR:=$(date --date='-2 month' +%Y)}
+        MONTH=${MONTH:=$(date --date='-2 month' +%m)}
+        DOWNLOAD_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/MERRA2-raw/$YEAR/$MONTH
+        DOWNLOAD_EXPECTED_PER_DAY=10
+        PROCESSED_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/scratch/MERRA2-raw/$YEAR/$MONTH
+        ;;
+    *)
+        exit 1
+esac
+
+DAYS_IN_MONTH=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
+
+DOWNLOADED_FILES=$(count_files "$DOWNLOAD_DIR/*.nc4")
+update_pbar 1
+
+function count_processed_files() {
+    count_files "$1/$2.$YEAR$MONTH*.$3.nc"
+}
+
+PROCESSED_4x5=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 4x5)
+PROCESSED_2x25=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 2x25)
+PROCESSED_05x0625=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 05x0625)
+PROCESSED_05x0625_AS=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 05x0625.AS)
+PROCESSED_05x0625_CH=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 05x0625.CH)
+PROCESSED_05x0625_EU=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 05x0625.EU)
+PROCESSED_05x0625_NA=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 05x0625.NA)
+PROCESSED_025x03125=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 025x03125)
+PROCESSED_025x03125_AS=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 025x03125.AS)
+PROCESSED_025x03125_CH=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 025x03125.CH)
+PROCESSED_025x03125_EU=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 025x03125.EU)
+PROCESSED_025x03125_NA=$(count_processed_files $PROCESSED_DIR ${ARCHIVE} 025x03125.NA)
+
+echo ""
+myprint "Month:" "$YEAR-$MONTH ($DAYS_IN_MONTH days)" 
+myprint "Downloaded:" $(printf "%4d/%-4d\n" $DOWNLOADED_FILES $(expr $DAYS_IN_MONTH \* $DOWNLOAD_EXPECTED_PER_DAY)) 
+#printf "Downloaded: %4d/%-4d\n" $DOWNLOADED_FILES $(expr $DAYS_IN_MONTH \* $DOWNLOAD_EXPECTED_PER_DAY) 
+myprint "Processed 4x5:" $(printf "%4d/%-4d\n" $PROCESSED_4x5 $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 2x2.5:" $(printf "%4d/%-4d\n" $PROCESSED_2x25 $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.5x0.625:" $(printf "%4d/%-4d\n" $PROCESSED_05x0625 $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.5x0.625 (AS):" $(printf "%4d/%-4d\n" $PROCESSED_05x0625_AS $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.5x0.625 (CH):" $(printf "%4d/%-4d\n" $PROCESSED_05x0625_CH $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.5x0.625 (EU):" $(printf "%4d/%-4d\n" $PROCESSED_05x0625_EU $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.5x0.625 (NA):" $(printf "%4d/%-4d\n" $PROCESSED_05x0625_NA $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.25x0.3125:" $(printf "%4d/%-4d\n" $PROCESSED_025x03125 $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.25x0.3125 (AS):" $(printf "%4d/%-4d\n" $PROCESSED_025x03125_AS $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.25x0.3125 (CH):" $(printf "%4d/%-4d\n" $PROCESSED_025x03125_CH $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.25x0.3125 (EU):" $(printf "%4d/%-4d\n" $PROCESSED_025x03125_EU $(expr $DAYS_IN_MONTH \* 6))
+myprint "Processed 0.25x0.3125 (NA):" $(printf "%4d/%-4d\n" $PROCESSED_025x03125_NA $(expr $DAYS_IN_MONTH \* 6))

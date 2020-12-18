@@ -1,3 +1,5 @@
 GEOS_FP-raw/
 regrid_codes/bin/GeosFpDriver.input
 regrid_codes/perl/doGeosFp.input
+logs/*.txt
+*-raw/

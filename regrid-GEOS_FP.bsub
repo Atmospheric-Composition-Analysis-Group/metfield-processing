@@ -1,11 +1,12 @@
 #!/bin/bash
-#BSUB -n 36
-#BSUB -R "rusage[mem=300GB] span[hosts=1]"
-#BSUB -q rvmartin
+#BSUB -n 12
+#BSUB -R "rusage[mem=150GB] span[hosts=1]"
+#BSUB -q general
 #BSUB -W 168:00
+#BSUB -w "DownloadGEOSFP"
 #BSUB -a 'docker(registry.gsc.wustl.edu/sleong/base-engineering-gcc)'
 #BSUB -g /liam.bindle/downloads
-#BSUB -J "Regrid GEOS_FP"
+#BSUB -J "RegridGEOSFP"
 #BSUB -Ne
 #BSUB -u liam.bindle@wustl.edu
 #BSUB -o /storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/logs/regrid-GEOS_FP_${YEAR}${MONTH}-%J.txt
@@ -62,18 +63,3 @@ for f in *.nc ; do
 done
 
 exit 0
-  
-#   mv $nc4dir/*$YEAR$strmonth*025x03125.CH* $ctmdir/GEOS_0.25x0.3125_CH.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*025x03125.NA* $ctmdir/GEOS_0.25x0.3125_NA.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*025x03125.EU* $ctmdir/GEOS_0.25x0.3125_EU.d/GEOS_FP/$YEAR/$strmonth/
-# #  mv $nc4dir/*$YEAR$strmonth*025x03125.SE* $ctmdir/GEOS_0.25x0.3125_SE.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*025x03125.AS* $ctmdir/GEOS_0.25x0.3125_AS.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*05x0625.CH* $ctmdir/GEOS_0.5x0.625_CH.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*05x0625.NA* $ctmdir/GEOS_0.5x0.625_NA.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*05x0625.EU* $ctmdir/GEOS_0.5x0.625_EU.d/GEOS_FP/$YEAR/$strmonth/
-# #  mv $nc4dir/*$YEAR$strmonth*05x0625.SE* $ctmdir/GEOS_0.5x0.625_SE.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*05x0625.AS* $ctmdir/GEOS_0.5x0.625_AS.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*2x25* $ctmdir/GEOS_2x2.5.d/GEOS_FP/$YEAR/$strmonth/
-#   mv $nc4dir/*$YEAR$strmonth*4x5* $ctmdir/GEOS_4x5.d/GEOS_FP/$YEAR/$strmonth/
-#   # move global native met field into scratch space 
-#   mv $nc4dir/*$YEAR$strmonth*025x03125.nc $SCRATCH_DIR/GEOS_0.25x0.3125.d/GEOS_FP/$YEAR/$strmonth/
