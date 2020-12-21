@@ -117,7 +117,7 @@ rawdir=$rawpath
 DAYS_IN_MONTH=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
 
 for day in $(seq -w  1 ${DAYS_IN_MONTH}); do
-   date=$YEAR$MONTH$(printf '%02i' $day)
+   date=$YEAR$MONTH$(printf '%02i' "${day#0}")
    cd $processdir/perl
    ./doMerra2 $date
 done
