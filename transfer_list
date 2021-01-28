@@ -1,0 +1,69 @@
+#!/bin/bash
+#set -x
+set -u
+: "$ARCHIVE"
+
+case $ARCHIVE in
+    GEOSFP)
+        YEAR=${YEAR:=$(date --date='-1 month' +%Y)}
+        MONTH=${MONTH:=$(date --date='-1 month' +%m)}
+        PROCESSED_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/scratch/GEOS_FP/$YEAR/$MONTH/nc4
+        NC_SUFFIX="nc"
+	GRIDS="4x5 2x25 025x03125 05x0625.CH 05x0625.EU 05x0625.NA 05x0625.AS 025x03125.CH 025x03125.EU 025x03125.NA 025x03125.AS"
+        ;;
+    MERRA2)
+        YEAR=${YEAR:=$(date --date='-2 month' +%Y)}
+        MONTH=${MONTH:=$(date --date='-2 month' +%m)}
+        PROCESSED_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/scratch/MERRA2-raw/$YEAR/$MONTH
+        NC_SUFFIX="nc4"
+	GRIDS="4x5 2x25 05x0625 05x0625.EU 05x0625.NA 05x0625.AS"
+        ;;
+    *)
+        exit 1
+esac
+
+DAYS_IN_MONTH=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
+
+function list_expected_files() {
+	ARCHIVE=$1
+	GRID=$2
+	for DAY in $(seq -w '01' $DAYS_IN_MONTH) ; do
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.A1.$GRID.$NC_SUFFIX 
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.A3cld.$GRID.$NC_SUFFIX 
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.A3dyn.$GRID.$NC_SUFFIX 
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.A3mstC.$GRID.$NC_SUFFIX 
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.A3mstE.$GRID.$NC_SUFFIX 
+		echo $YEAR/$MONTH/$ARCHIVE.$YEAR$MONTH$DAY.I3.$GRID.$NC_SUFFIX 
+	done
+}
+
+function to_CCVM_path() {
+	sed \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*4x5\.nc4\?\)#/data/www/ExtData/GEOS_4x5/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*2x25\.nc4\?\)#/data/www/ExtData/GEOS_2x2.5/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*05x0625\.nc4\?\)#/data/www/ExtData/GEOS_0.5x0.625/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*05x0625\.EU\.nc4\?\)#/data/www/ExtData/GEOS_0.5x0.625_EU/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*05x0625\.NA\.nc4\?\)#/data/www/ExtData/GEOS_0.5x0.625_NA/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*05x0625\.AS\.nc4\?\)#/data/www/ExtData/GEOS_0.5x0.625_AS/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*05x0625\.CH\.nc4\?\)#/data/www/ExtData/GEOS_0.5x0.625_CH/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*025x03125\.nc4\?\)#/data/www/ExtData/GEOS_0.25x0.3125/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*025x03125\.EU\.nc4\?\)#/data/www/ExtData/GEOS_0.25x0.3125_EU/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*025x03125\.NA\.nc4\?\)#/data/www/ExtData/GEOS_0.25x0.3125_NA/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*025x03125\.AS\.nc4\?\)#/data/www/ExtData/GEOS_0.25x0.3125_AS/\2/\1\2\3#g' \
+                -e 's#\(.*\)\(MERRA2\|GEOSFP\)\(.*025x03125\.CH\.nc4\?\)#/data/www/ExtData/GEOS_0.25x0.3125_CH/\2/\1\2\3#g' \
+		| sed 's#/GEOSFP/#/GEOS_FP/#g'
+}
+
+function to_C1_path() {
+	sed -e "s#^[0-9][0-9][0-9][0-9]/[0-9][0-9]#$PROCESSED_DIR#g"
+}
+
+function print_relative_paths() {
+	for GRID in $GRIDS ; do
+		list_expected_files $ARCHIVE $GRID
+	done
+
+}
+RELATIVE_PATHS=$(print_relative_paths)
+paste -d " " <(echo "$RELATIVE_PATHS" | to_C1_path) <(echo "$RELATIVE_PATHS" | to_CCVM_path) | column -t
+

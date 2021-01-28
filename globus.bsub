@@ -1,0 +1,8 @@
+#BSUB -Is
+#BSUB -n 2
+#BSUB -R "rusage[mem=16GB] span[hosts=1]"
+#BSUB -q rvmartin-interactive
+#BSUB -W 24:00
+#BSUB -a 'docker(liambindle/globus-cli)'
+
+/bin/bash
