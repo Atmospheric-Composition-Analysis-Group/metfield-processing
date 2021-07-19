@@ -11,7 +11,7 @@
 #BSUB -o /storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/logs/regrid-GEOS_FP_${YEAR}${MONTH}-%J.txt
 
 set -u
-: "$YEAR" "$MONTH"
+: "$YEAR" "$MONTH" "$DAY"
 
 . /etc/bashrc
 
@@ -25,8 +25,6 @@ export SCRATCH_DIR=/storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProces
 
 export PATH=$PATH:$GEOS_FP_PROCESSING/bin
 
-DAYS_IN_MONTH=$(cal $MONTH $YEAR | awk 'NF {DAYS = $NF}; END {print DAYS}')
-
 sed -i "96s#.*#${GEOS_FP_DOWNLOAD_DIR}/${YEAR}/${MONTH}/#" GEOS_FP/bin/GeosFpDriver.input
 sed -i "39s#.*#${GEOS_FP_DOWNLOAD_DIR}/${YEAR}/${MONTH}/#" GEOS_FP/perl/doGeosFp.input
 sed -i "51s#.*#$SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}/#" GEOS_FP/perl/doGeosFp.input
@@ -34,10 +32,8 @@ sed -i "51s#.*#$SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}/#" GEOS_FP/perl/doGeosFp.in
 mkdir -p $SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}
 
 cd GEOS_FP/perl
-for day in $(seq -w 1 ${DAYS_IN_MONTH}); do
-   date=$YEAR$MONTH$(printf '%02i' "${day#0}")
-   ./doGeosFpMulti $date
-done
+date=$YEAR$MONTH$(printf '%02i' "${DAY#0}")
+./doGeosFpMulti $date
 
 cd $SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}
 
