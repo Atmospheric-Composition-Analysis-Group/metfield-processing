@@ -8,4 +8,8 @@ MONTH=${MONTH:=$(date --date='-2 month' +%m)}
 export YEAR=$YEAR
 export MONTH=$MONTH
 
-envsubst '${YEAR} ${MONTH}' < $THIS_SCRIPTS_DIRECTORY/regrid-MERRA2.bsub | bsub
+if [[ "$*" == *--no-download* ]]; then
+	envsubst '${YEAR} ${MONTH}' < $THIS_SCRIPTS_DIRECTORY/regrid-MERRA2.bsub | grep -v '#BSUB -w' | bsub
+else
+	envsubst '${YEAR} ${MONTH}' < $THIS_SCRIPTS_DIRECTORY/regrid-MERRA2.bsub | bsub
+fi

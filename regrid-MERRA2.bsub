@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -n 12
-#BSUB -R "rusage[mem=150GB] span[hosts=1]"
-#BSUB -q general
+#BSUB -R "rusage[mem=150GB] span[hosts=1] order[-slots]"
+#BSUB -q rvmartin
 #BSUB -W 168:00
 #BSUB -w "DownloadMERRA2"
 #BSUB -a 'docker(registry.gsc.wustl.edu/sleong/base-engineering)'
@@ -90,6 +90,19 @@ elif [ $YEAR -ge 2001 ] && [ $YEAR -lt 2011 ]; then
 		sed -i "76s\.*\MERRA2_300.tavg3_3d_mst_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
 		sed -i "81s\.*\MERRA2_300.tavg3_3d_rad_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
 		sed -i "86s\.*\MERRA2_300.inst3_3d_asm_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+
+elif [ "$YEAR" = "2020" ] && [ "$MONTH" = "09" ]; then
+
+		sed -i "40s\.*\MERRA2_401.tavg1_2d_flx_Nx.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "45s\.*\MERRA2_401.tavg1_2d_lnd_Nx.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "50s\.*\MERRA2_401.tavg1_2d_rad_Nx.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "55s\.*\MERRA2_401.tavg1_2d_slv_Nx.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "60s\.*\MERRA2_401.tavg3_3d_asm_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "65s\.*\MERRA2_401.tavg3_3d_cld_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "71s\.*\MERRA2_401.tavg3_3d_mst_Ne.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "76s\.*\MERRA2_401.tavg3_3d_mst_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "81s\.*\MERRA2_401.tavg3_3d_rad_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
+		sed -i "86s\.*\MERRA2_401.inst3_3d_asm_Nv.YYYYMMDD.nc4\g" $processdir/bin/Merra2_Driver.input
 
 elif [ $YEAR -ge 2011 ]; then
 

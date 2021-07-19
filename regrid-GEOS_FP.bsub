@@ -1,13 +1,12 @@
-#!/bin/bash
 #BSUB -n 12
-#BSUB -R "rusage[mem=150GB] span[hosts=1]"
-#BSUB -q general
+#BSUB -R "rusage[mem=150GB] span[hosts=1] order[-slots]"
+#BSUB -q rvmartin
 #BSUB -W 168:00
 #BSUB -w "DownloadGEOSFP"
 #BSUB -a 'docker(registry.gsc.wustl.edu/sleong/base-engineering-gcc)'
 #BSUB -g /liam.bindle/downloads
 #BSUB -J "RegridGEOSFP"
-#BSUB -Ne
+#BSUB -N
 #BSUB -u liam.bindle@wustl.edu
 #BSUB -o /storage1/fs1/rvmartin/Active/GEOS-Chem-shared/MetFieldProcessing/logs/regrid-GEOS_FP_${YEAR}${MONTH}-%J.txt
 
@@ -36,7 +35,7 @@ mkdir -p $SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}
 
 cd GEOS_FP/perl
 for day in $(seq -w 1 ${DAYS_IN_MONTH}); do
-   date=$YEAR$MONTH$(printf '%02i' $day)
+   date=$YEAR$MONTH$(printf '%02i' "${day#0}")
    ./doGeosFpMulti $date
 done
 
@@ -44,24 +43,27 @@ cd $SCRATCH_DIR/GEOS_FP/${YEAR}/${MONTH}
 
 mkdir -p nc4
 
-for f in *.nc ; do
-   line=$(ncdump -h $f | grep "lat = ")  #retrieve number of lats
-   subline=${line##*= }
-   nlat=${subline% ;*}
+#find -name 'GEOSFP.*.[AI]3*.nc' -maxdepth 1 -exec nccopy -w -k3 -d5 -c time/,lev/,lat/,lon/ {} nc4/{} \;
+#find -name 'GEOSFP.*.[AI]1*.nc' -maxdepth 1 -exec nccopy -w -k3 -d5 -c time/,lat/,lon/ {} nc4/{} \;
 
-   line=$(ncdump -h $f | grep "lon = ")   #retrieve number of lons
-   subline=${line##*= }
-   nlon=${subline% ;*}
+ for f in *.nc ; do
+    line=$(ncdump -h $f | grep "lat = ")  #retrieve number of lats
+    subline=${line##*= }
+    nlat=${subline% ;*}
 
-   line=$(ncdump -h $f | grep -n "dimensions")  #retrieve number of dimensions
-   line2=$(ncdump -h $f | grep -n "variables")
-   ndim=$((${line2%:v*}-${line%:d*}-1))
+    line=$(ncdump -h $f | grep "lon = ")   #retrieve number of lons
+    subline=${line##*= }
+    nlon=${subline% ;*}
 
-   if [ $ndim == 3 ]; then    #2-D fields
-      nccopy -w -k3 -d5 -c time/1,lat/$nlat,lon/$nlon $f nc4/$f
-   elif [ $ndim == 4 ]; then   #3-D fields
-      nccopy -w -k3 -d5 -c time/1,lev/1,lat/$nlat,lon/$nlon $f nc4/$f
-   fi
-done
+    line=$(ncdump -h $f | grep -n "dimensions")  #retrieve number of dimensions
+    line2=$(ncdump -h $f | grep -n "variables")
+    ndim=$((${line2%:v*}-${line%:d*}-1))
+
+    if [ $ndim == 3 ]; then    #2-D fields
+       nccopy -w -k3 -d5 -c time/1,lat/$nlat,lon/$nlon $f nc4/$f
+    elif [ $ndim == 4 ]; then   #3-D fields
+       nccopy -w -k3 -d5 -c time/1,lev/1,lat/$nlat,lon/$nlon $f nc4/$f
+    fi
+ done
 
 exit 0

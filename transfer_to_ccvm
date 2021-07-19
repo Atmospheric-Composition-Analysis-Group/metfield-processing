@@ -1,5 +1,0 @@
-#!/bin/bash
-LABEL="C1 to CCVM transfer"
-CCVM_EPUUID="99314852-4171-11eb-b55c-02d9497ca481"
-STORAGE1_EPUUID="01f0ac4c-9570-11ea-b3c4-0ae144191ee3"
-globus transfer $STORAGE1_EPUUID $CCVM_EPUUID --batch --label "$LABEL"
